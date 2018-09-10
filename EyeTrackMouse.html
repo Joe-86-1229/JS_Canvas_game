@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tracking Mouse</title>
+</head>
+<body>
+	<canvas height="800" width="800" id="can" style="border: 5px solid #000000"> </canvas>
+
+	<script type="text/javascript">
+	
+	var can = document.getElementById('can').getContext('2d');
+
+	var WIDTH = 800;
+	var HEIGHT = 800;
+
+
+	var circle1 = {
+		x:250,
+		y:300,
+		radius:20
+	};
+
+	var circle2 = {
+		x:550,
+		y:300,
+		radius:20
+	};
+
+	var eyeball1 = {
+		x:250,
+		y:300,
+		radius:10
+	};
+
+	var eyeball2 = {
+		x:550,
+		y:300,
+		radius:10
+	};
+
+
+	document.getElementById('can').onmousemove = function(mouse){
+		var mouseX = mouse.clientX - document.getElementById('can').getBoundingClientRect().left;
+		var mouseY = mouse.clientY - document.getElementById('can').getBoundingClientRect().top;
+
+		if (mouseX <= eyeball1.x){
+			eyeball1.x = 240;
+			eyeball2.x = 540;
+		}
+
+		if (mouseX >= eyeball2.x){
+			eyeball1.x = 260;
+			eyeball2.x = 560;
+		}
+	 
+
+		if (mouseY >= eyeball1.y){
+			eyeball1.y = 310;
+			eyeball2.y = 310;
+		}
+
+		if (mouseY <= eyeball1.y){
+			eyeball1.y = 290;
+			eyeball2.y = 290;
+		}
+
+		if (mouseX > eyeball1.x && mouseX < eyeball2.x){
+			eyeball1.x = 260;
+			eyeball2.x = 540;
+		}
+}
+	
+
+	drawEyeball = function(eyeball){
+		can.save();
+		can.beginPath();
+		can.arc(eyeball.x, eyeball.y, eyeball.radius, 0, 2*Math.PI);
+		can.fill();
+		can.restore();
+	}
+
+	drawCircle = function(circle) {
+		can.save();
+		can.beginPath();
+		can.arc(circle.x, circle.y, circle.radius, 0, 2*Math.PI);
+		can.stroke();
+		can.restore();
+	}
+
+	update = function(){
+		can.clearRect(0, 0, WIDTH, HEIGHT);
+		drawCircle(circle1);
+		drawCircle(circle2);
+		drawEyeball(eyeball1);
+		drawEyeball(eyeball2);
+	}
+
+
+	setInterval(update,10);
+
+	</script>
+</body>
+</html>
