@@ -35,8 +35,10 @@
 			'height': 50,
 			'spd': 0,
 			'jump': 100,
-			'jumpUnit': 10,
+			'jumpUnit': 5,
 			'onAir': false,
+			'gravity': 5,
+			'safe': true,
 			'leftPressed': false,
 			'rightPressed': false
 		};
@@ -59,20 +61,27 @@
 							blood.onload = function(){
 								food.onload = function(){
 									tile.onload = function(){
+
+										drawObject = function(object, x, y, width, height){
+											can.drawImage(object, x, y, width, height);
+										}
+
 										document.onkeydown = function(event){
 											if(event.keyCode == 37){
 												catcher.leftPressed = true;
-												catcher.spd = -10;
+												catcher.spd = -5;
 											}
 
 											if(event.keyCode == 39){
 												catcher.rightPressed = true;
-												catcher.spd = 10;
+												catcher.spd = 5;
 											}
 
-											if(event.keyCode == 38){
-												catcher.jump = 100;
-												catcher.onAir = true;
+											if (event.keyCode == 38 && !catcher.onAir && catcher.y == 350) {
+												if (!catcher.onAir) {
+													catcher.jump = 100;
+													catcher.onAir = true;
+												}
 											}
 										}
 
@@ -86,72 +95,201 @@
 											}
 										}
 
-										drawObject = function(object, x, y, width, height){
-											can.drawImage(object, x, y, width, height);
+										document.getElementById("can").onmousedown = function(){
+											if (!gameover) {
+												clearInterval(intervalval);
+											}
+											startGame();
 										}
 
+
+										sound = function(src) {
+										    this.sound = document.createElement("audio");
+										    this.sound.src = src;
+										    this.sound.setAttribute("preload", "auto");
+										    this.sound.setAttribute("controls", "none");
+										    this.sound.style.display = "none";
+										    document.body.appendChild(this.sound);
+
+										    this.play = function(){
+										        this.sound.play();
+										    }
+										    this.stop = function(){
+										        this.sound.pause();
+										    }
+										}
+
+										var eatingSound = new sound("sound/eat.mp3");
+										var droppingSound = new sound("sound/drop.mp3");
+
+										gameOver = function() {
+											can.save();
+											// transparent
+											can.globalAlpha = 0.6;
+											drawObject(blood,100,100,300,300);
+											can.globalAlpha = 1.0;
+											can.strokeStyle = "#FFFFFF";
+											can.font = "30px Calibri"
+											can.strokeText("Game Over",180,200);
+											can.strokeText("Click to restart",160,250);
+											can.restore();
+											// stop the game
+											clearInterval(intervalVar);
+										}
+										
 										updateCatcherPosition = function(){
 											if(catcher.leftPressed || catcher.rightPressed){
 												let original_spd = catcher.x;
 												catcher.x += catcher.spd; 
-												if(catcher.x < 0 || catcher.x > 500){
+												if(catcher.x < 0 || catcher.x > 470){
 													catcher.x = original_spd;
+												}
+											}
+
+											if (catcher.y >= 450){
+												catcher.y = 450
+												gameover = true;
+												droppingSound.play();
+											}
+
+
+										}
+
+
+										jump = function(){
+											// Moving up
+											if (catcher.jump > 0 && catcher.onAir) {
+												catcher.y -= catcher.jumpUnit;
+												catcher.jump -= catcher.jumpUnit;
+											}
+											if (catcher.jump <= 0 && catcher.jump > -100 && catcher.onAir) {
+												catcher.y += catcher.jumpUnit;
+												catcher.jump -= catcher.jumpUnit;
+											}
+											if (catcher.jump <= -100 && catcher.onAir) {
+												catcher.onAir = false;
+											}
+										}
+
+										updateFoodPosition = function() {
+											for(var i in foodList) {
+												if (foodList[i].y > 500) { 
+													// remove food which beyond canvas from  list
+													foodList.splice(i,1);
+												}
+												else {
+													foodList[i].y += foodObject.spd;
 												}
 											}
 										}
 
-										jump = function(){
-											// moving up
-											if (catcher.jump > 0 && catcher.onAir){
-												catcher.y -= catcher.jumpUnit;
-												catcher.jump -= catcher.jumpUnit;
-											}
-											// moving down
-											if (catcher.jump <= 0 && catcher.jump > -100 && catcher.onAir){
-												catcher.y += catcher.jumpUnit;
-								 				catcher.jump -= catcher.jumpUnit;
-											}
-											// back to tile
-											if (catcher.jump <= -100) {
-												catcher.onAir = false;
-											}
+										food_catcher_collision = function(f) {
+											return ((f.x < catcher.x + catcher.width) &&
+													(catcher.x < f.x + foodObject.width) &&
+													(f.y < catcher.y + catcher.height) &&
+													(catcher.y < f.y + foodObject.height));
+										}
 
+										food_tile_collision = function(f,t) {
+											return ((f.x < t.x + tileObject.width) &&
+													(t.x < f.x + foodObject.width) &&
+													(f.y < t.y + tileObject.height) &&
+													(t.y < f.y + foodObject.height));	
+										}
+
+										// catcher has to stand on one tile
+										catcher_tile_collision = function(t) {
+											return ((catcher.x <= t.x + tileObject.width) &&
+													(t.x <= catcher.x + catcher.width) &&
+													(catcher.y + catcher.height <= t.y));
 										}
 
 										update = function(){
 											can.clearRect(0, 0, 500, 500);
 											drawObject(background, 0, 0, 500, 500);
-											
-											foodTimer++;
-											if (foodTimer > 100){
-												//generate random number betwee 0-9
-												foodList.push({'x':foodDrop[Math.round(Math.random() * 9)], 'y':0});
-												foodTimer = 0;
-											}
-											if (catcher.onAir){
-												console.log("air");
-												drawObject(catcherFour, catcher.x, catcher.y, catcher.width, catcher.height);
-											}
 
-											else if (animation == 0) {
-												drawObject(catcherTwo, catcher.x, catcher.y, catcher.width, catcher.height);
-												animation = 1;
+											if (gameover) {
+												drawObject(catcherThree,catcher.x,470,50,30);
+												gameOver();
 											}
 											else {
-												drawObject(catcherOne, catcher.x, catcher.y, catcher.width, catcher.height);
-												animation = 0;
-											}
+												foodTimer++;
+												if (foodTimer > level && level >= 0){
+													//generate random number between 0-9
+													foodList.push({'x':foodDrop[Math.round(Math.random() * 9)], 'y':0})
+													foodTimer = 0;
+												}
+												if (catcher.onAir){
+													console.log("air");
+													drawObject(catcherFour, catcher.x, catcher.y, catcher.width, catcher.height);
+												}
 
-											for (var i in foodList) {
-												drawObject(food, foodList[i].x, foodList[i].y, foodObject.width, foodObject.height);
-											}
+												else if (animation == 0) {
+													drawObject(catcherTwo, catcher.x, catcher.y, catcher.width, catcher.height);
+													animation = 1;
+												}
+												else {
+													drawObject(catcherOne, catcher.x, catcher.y, catcher.width, catcher.height);
+													animation = 0;
+												}
 
-											for(var i = 0; i < tileList.length; i++) {
-												drawObject(tile, tileList[i].x, tileList[i].y, tileObject.width, tileObject.height);
+												for (var i in foodList) {
+													drawObject(food, foodList[i].x, foodList[i].y, foodObject.width, foodObject.height);
+												}
+
+												for (var i = 0; i < tileList.length; i++) {
+													drawObject(tile, tileList[i].x, tileList[i].y, tileObject.width, tileObject.height);
+												}
+												
+
+												for (var f in foodList){
+													if (food_catcher_collision(foodList[f])){
+														// remove the food
+														foodList.splice(f,1);
+														eatingSound.play();
+														score++;
+														if (score % 2 == 0 && level >= 0){
+															level -= 2;
+														}
+
+													}
+												}
+
+												for (var f in foodList) {
+													for (var t in tileList) {
+														if (food_tile_collision(foodList[f],tileList[t])) {
+															//remove the tile
+															tileList.splice(t,1);
+														}
+													}
+												}
+
+
+												if (!catcher.onair) {
+													for (var i in tileList) {
+														if (catcher_tile_collision(tileList[i])) {
+															catcher.safe = true;
+															break;
+														}
+														catcher.safe = false;
+													}
+													if (!catcher.safe) { 
+														catcher.y += catcher.gravity;
+													}
+												}
+												
+												drawObject(food, 440, 10, 20, 20);
+												can.fillStyle = '#FFFFFF';
+												can.font = '20px Calibri';
+												can.fillText(score, 465, 27);
+												can.fillText("Level: "+ (100 - level), 10, 27);
+
+												updateFoodPosition();
+												updateCatcherPosition();
+												jump();
 											}
 											
-											updateCatcherPosition();
-											jump();
+											
 										}
 
 
@@ -174,7 +312,7 @@
 													tileList.push({'x':i * 50,'y': 400});
 												}
 
-												intervalVar = setInterval(update,10); // 100 fps game
+												intervalVar = setInterval(update,15); // 100 fps game
 
 											}
 
